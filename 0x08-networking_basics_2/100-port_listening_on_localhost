@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+#fun communication between term
+nc -l 98
