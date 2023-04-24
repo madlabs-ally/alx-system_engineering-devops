@@ -1,30 +1,54 @@
-#!/usr/bin/python3
-'''A script that gathers employee name completed
-tasks and total number of tasks from an API
-'''
-
-import re
 import requests
 import sys
 
-REST_API = "https://jsonplaceholder.typicode.com"
+EMPLOYEES_API_URL = "https://jsonplaceholder.typicode.com/users"
+TODOS_API_URL = "https://jsonplaceholder.typicode.com/todos"
 
-if __name__ == '__main__':
-    if len(sys.argv) > 1:
-        if re.fullmatch(r'\d+', sys.argv[1]):
-            id = int(sys.argv[1])
-            emp_req = requests.get('{}/users/{}'.format(REST_API, id)).json()
-            task_req = requests.get('{}/todos'.format(REST_API)).json()
-            emp_name = emp_req.get('name')
-            tasks = list(filter(lambda x: x.get('userId') == id, task_req))
-            completed_tasks = list(filter(lambda x: x.get('completed'), tasks))
-            print(
-                'Employee {} is done with tasks({}/{}):'.format(
-                    emp_name,
-                    len(completed_tasks),
-                    len(tasks)
-                )
-            )
-            if len(completed_tasks) > 0:
-                for task in completed_tasks:
-                    print('\t {}'.format(task.get('title')))
+
+def get_employee_name(employee_id):
+    response = requests.get(f"{EMPLOYEES_API_URL}/{employee_id}")
+    if response.ok:
+        employee = response.json()
+        return employee['name']
+    else:
+        response.raise_for_status()
+
+
+def get_employee_todos(employee_id):
+    response = requests.get(TODOS_API_URL, params={'userId': employee_id})
+    if response.ok:
+        todos = response.json()
+        return todos
+    else:
+        response.raise_for_status()
+
+
+def display_todo_progress(employee_name, todos):
+    total_tasks = len(todos)
+    completed_tasks = sum(1 for todo in todos if todo['completed'])
+
+    print(f"Employee {employee_name} is done with tasks({completed_tasks}/{total_tasks}):")
+
+    for todo in todos:
+        if todo['completed']:
+            print(f"\t{todo['title']}")
+
+
+def main(employee_id):
+    try:
+        employee_name = get_employee_name(employee_id)
+        todos = get_employee_todos(employee_id)
+        display_todo_progress(employee_name, todos)
+    except requests.exceptions.RequestException as e:
+        print(f"Error: {e}")
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        print("Usage: python3 todo.py <employee_id>")
+        sys.exit(1)
+
+    employee_id = sys.argv[1]
+    main(employee_id)
+
