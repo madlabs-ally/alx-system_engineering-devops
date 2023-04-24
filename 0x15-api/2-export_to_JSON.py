@@ -1,74 +1,54 @@
-#!/usr/bin/env python3
-
 import requests
-import json
 import sys
 
+EMPLOYEES_API_URL = "https://jsonplaceholder.typicode.com/users"
+TODOS_API_URL = "https://jsonplaceholder.typicode.com/todos"
 
-def get_todos(user_id):
-    try:
-        response = requests.get(f"https://jsonplaceholder.typicode.com/todos?userId={user_id}")
-        response.raise_for_status()  # raise an exception if the request failed
+
+def get_employee_name(employee_id):
+    response = requests.get(f"{EMPLOYEES_API_URL}/{employee_id}")
+    if response.ok:
+        employee = response.json()
+        return employee['name']
+    else:
+        response.raise_for_status()
+
+
+def get_employee_todos(employee_id):
+    response = requests.get(TODOS_API_URL, params={'userId': employee_id})
+    if response.ok:
         todos = response.json()
         return todos
-    except requests.exceptions.RequestException as e:
-        print(f"Error: {e}")
-        return []
-
-
-def get_username(user_id):
-    try:
-        response = requests.get(f"https://jsonplaceholder.typicode.com/users/{user_id}")
+    else:
         response.raise_for_status()
-        user = response.json()
-        return user['username']
+
+
+def display_todo_progress(employee_name, todos):
+    total_tasks = len(todos)
+    completed_tasks = sum(1 for todo in todos if todo['completed'])
+
+    print(f"Employee {employee_name} is done with tasks({completed_tasks}/{total_tasks}):")
+
+    for todo in todos:
+        if todo['completed']:
+            print(f"\t{todo['title']}")
+
+
+def main(employee_id):
+    try:
+        employee_name = get_employee_name(employee_id)
+        todos = get_employee_todos(employee_id)
+        display_todo_progress(employee_name, todos)
     except requests.exceptions.RequestException as e:
         print(f"Error: {e}")
-        return None
-
-
-def filter_completed_tasks(todos):
-    return [todo for todo in todos if todo['completed']]
-
-
-def generate_tasks_dict(user_id, todos, username):
-    tasks = []
-    for todo in todos:
-        tasks.append({
-            "task": todo['title'],
-            "completed": todo['completed'],
-            "username": username
-        })
-
-    return { str(user_id): tasks }
-
-
-def write_tasks_to_file(tasks_dict, user_id):
-    filename = f"{user_id}.json"
-    with open(filename, "w") as f:
-        json.dump(tasks_dict, f)
-    print(f"JSON file {filename} has been created successfully.")
-
-
-def main(user_id):
-    todos = get_todos(user_id)
-    if not todos:
-        return
-
-    username = get_username(user_id)
-    if not username:
-        return
-
-    completed_tasks = filter_completed_tasks(todos)
-    tasks_dict = generate_tasks_dict(user_id, todos, username)
-    write_tasks_to_file(tasks_dict, user_id)
+        sys.exit(1)
 
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        print("Usage: python3 todo.py <user_id>")
+        print("Usage: python3 todo.py <employee_id>")
         sys.exit(1)
 
-    user_id = sys.argv[1]
-    main(user_id)
+    employee_id = sys.argv[1]
+    main(employee_id)
 
